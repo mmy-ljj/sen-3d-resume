@@ -50,6 +50,17 @@ canvas {
   height: 100% !important;
 }
 
+.scene-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 76% 68% at 50% 43%, transparent 34%, rgba(3, 8, 18, 0.42) 100%),
+    repeating-linear-gradient(0deg, transparent 0 63px, rgba(125, 200, 220, 0.035) 64px),
+    repeating-linear-gradient(90deg, transparent 0 63px, rgba(125, 200, 220, 0.035) 64px);
+}
+
 .scrim {
   position: fixed;
   inset: 0;
@@ -59,9 +70,9 @@ canvas {
      配合 framer 上限 0.4：时间轴左缘 alpha≈0.75(→0.3)、右侧 1.0(→0.4) */
   background: linear-gradient(
     to right,
-    rgba(10, 14, 22, 0) 20%,
-    rgba(10, 14, 22, 0.75) 58%,
-    rgba(10, 14, 22, 1) 92%
+    rgba(7, 15, 30, 0) 20%,
+    rgba(7, 15, 30, 0.75) 58%,
+    rgba(7, 15, 30, 1) 92%
   );
 }
 
@@ -262,6 +273,160 @@ canvas {
 @media (max-width: 640px) {
   .hm-right {
     display: none;
+  }
+}
+
+/* ---------- 摄像头手势控制 ---------- */
+.gesture-panel {
+  position: fixed;
+  top: clamp(16px, 3vh, 32px);
+  right: clamp(16px, 3vw, 42px);
+  z-index: 80;
+  width: min(250px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid rgba(244, 241, 234, 0.18);
+  border-radius: 16px;
+  background: rgba(10, 14, 22, 0.58);
+  color: rgba(244, 241, 234, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 18px 70px rgba(0, 0, 0, 0.22);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  pointer-events: auto;
+}
+
+.gesture-panel.is-active {
+  border-color: rgba(255, 217, 179, 0.46);
+}
+
+.gesture-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  object-fit: cover;
+  transform: scaleX(-1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.gesture-panel:not(.is-active) .gesture-video {
+  display: none;
+}
+
+.gesture-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: rgba(244, 241, 234, 0.58);
+}
+
+.gesture-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(244, 241, 234, 0.3);
+}
+
+.gesture-status-dot.loading {
+  background: #ffd9b3;
+  animation: gesturePulse 1s ease-in-out infinite;
+}
+
+.gesture-status-dot.ready {
+  background: #8fd8a2;
+  box-shadow: 0 0 12px rgba(143, 216, 162, 0.8);
+}
+
+.gesture-status-dot.error {
+  background: #ef8f8f;
+}
+
+.gesture-message {
+  margin: 10px 0 12px;
+  min-height: 36px;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.6;
+  color: rgba(244, 241, 234, 0.62);
+}
+
+.gesture-action {
+  color: #b7f0ee;
+  font-size: 12px;
+}
+
+.gesture-action-slot {
+  min-height: 30px;
+  display: flex;
+  align-items: flex-start;
+}
+.gesture-progress {
+  height: 3px;
+  margin: 0 0 12px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(183, 240, 238, 0.12);
+}
+.gesture-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #78bad4, #b7f0ee);
+  transform-origin: left;
+  transition: transform 100ms linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gesture-progress span { transition: none; }
+}
+
+.gesture-guide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 8px;
+  margin: 0 0 12px;
+  color: rgba(244, 241, 234, 0.42);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.gesture-toggle {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 217, 179, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 217, 179, 0.08);
+  color: #ffd9b3;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.gesture-toggle:hover,
+.gesture-toggle:focus-visible {
+  background: rgba(255, 217, 179, 0.16);
+  border-color: rgba(255, 217, 179, 0.72);
+  outline: none;
+}
+
+@keyframes gesturePulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .gesture-panel {
+    top: auto;
+    right: 16px;
+    bottom: 16px;
+    width: min(220px, calc(100vw - 32px));
   }
 }
 
@@ -867,8 +1032,7 @@ canvas {
   will-change: transform;
 }
 
-/* 全高板块：单栏（编号 + 标题 + 作品清单）。
-   标题固定在顶部偏下同一高度（flex-start，不随清单长短漂移） */
+/* 全高板块：标题与个人说明清单直接展开。 */
 .wk-card {
   flex: none;
   display: flex;
@@ -890,51 +1054,8 @@ canvas {
   border-right: 1px solid var(--line);
 }
 
-/* 小横图：右侧错落（align-self 右对齐 + 内缩留白），不抢主体 */
-.wk-card-cover {
-  position: relative;
-  flex: none;
-  align-self: flex-end;
-  width: clamp(160px, 22vw, 240px);
-  margin-right: clamp(12px, 6%, 80px);
-  aspect-ratio: 3 / 2;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  background: #1d2124;
-}
-.wk-card-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.wk-card-cover-ph {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: radial-gradient(120% 120% at 30% 25%, rgba(48, 55, 60, 0.5), rgba(29, 33, 36, 0.98));
-}
-.wk-card-cover-no {
-  font-family: 'Cormorant Upright', 'Chiron GoRound TC', 'PingFang SC', serif;
-  font-size: clamp(40px, 7vw, 88px);
-  font-weight: 600;
-  line-height: 1;
-  color: rgba(244, 241, 234, 0.16);
-}
-
 .wk-card-head {
   flex: none;
-}
-.wk-card-no {
-  display: block;
-  font-family: 'Helvetica Neue', system-ui, sans-serif;
-  font-size: clamp(11px, 1.2vw, 13px);
-  letter-spacing: 0.3em;
-  color: rgba(244, 241, 234, 0.4);
-  font-variant-numeric: tabular-nums;
-  margin-bottom: 1.1em;
 }
 
 .wk-card-title {
@@ -1216,6 +1337,9 @@ canvas {
   padding: 6vh 8vw;
   background: radial-gradient(120% 120% at 30% 20%, rgba(48, 55, 60, 0.5), rgba(29, 33, 36, 0.98));
 }
+.wk-detail-banner.is-mascot {
+  background: radial-gradient(100% 120% at 50% 10%, rgba(102, 111, 86, 0.62), rgba(20, 26, 29, 0.98));
+}
 .wk-detail-ph-text {
   font-family: 'Cormorant Upright', 'Chiron GoRound TC', 'PingFang SC', serif;
   font-size: clamp(28px, 5vw, 72px);
@@ -1224,6 +1348,233 @@ canvas {
   text-align: center;
   color: rgba(244, 241, 234, 0.16);
   letter-spacing: 0.02em;
+}
+
+/* 可拖动的动漫角色：用于个人说明详情页的互动图片区 */
+.mascot-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 224, 131, 0.12), transparent 34%),
+    linear-gradient(150deg, rgba(255, 223, 135, 0.08), transparent 55%);
+}
+.mascot-stage.is-dragging {
+  cursor: grabbing;
+}
+.mascot-tip {
+  position: absolute;
+  top: 18px;
+  left: 24px;
+  z-index: 2;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 239, 196, 0.22);
+  border-radius: 999px;
+  background: rgba(10, 14, 22, 0.28);
+  color: rgba(255, 239, 196, 0.75);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+.mascot-sprite {
+  position: absolute;
+  z-index: 1;
+  width: clamp(118px, 18vw, 220px);
+  max-height: 82%;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 18px 16px rgba(0, 0, 0, 0.28));
+  cursor: grab;
+  pointer-events: auto;
+}
+.mascot-stage.is-dragging .mascot-sprite {
+  cursor: grabbing;
+}
+.mascot-sprite.is-wave {
+  animation: mascotWave 0.85s ease-in-out;
+}
+.mascot-sprite.is-jump {
+  animation: mascotJump 0.85s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.mascot-sprite.is-spin {
+  animation: mascotSpin 0.85s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.mascot-shadow {
+  position: absolute;
+  z-index: 0;
+  bottom: 22%;
+  width: clamp(70px, 11vw, 150px);
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+  filter: blur(5px);
+  transform: translateX(-50%);
+  transition: left 0.15s ease;
+}
+.mascot-actions {
+  position: absolute;
+  right: 20px;
+  bottom: 18px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: min(360px, calc(100% - 40px));
+}
+.mascot-actions button {
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 239, 196, 0.28);
+  border-radius: 999px;
+  background: rgba(10, 14, 22, 0.44);
+  color: rgba(255, 239, 196, 0.88);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.mascot-actions button:hover,
+.mascot-actions button:focus-visible {
+  border-color: rgba(255, 239, 196, 0.72);
+  background: rgba(255, 224, 131, 0.18);
+  transform: translateY(-2px);
+  outline: none;
+}
+@keyframes mascotWave {
+  0%,
+  100% { transform: translate(-50%, -50%) rotate(0deg); }
+  35% { transform: translate(-50%, -50%) rotate(-7deg) scale(1.04); }
+  68% { transform: translate(-50%, -50%) rotate(6deg) scale(1.04); }
+}
+@keyframes mascotJump {
+  0%,
+  100% { transform: translate(-50%, -50%); }
+  45% { transform: translate(-50%, -72%) rotate(-3deg) scale(1.04); }
+}
+@keyframes mascotSpin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 常驻桌宠：参考桌面插件的浮动、可拖动交互，不占用作品区版面 */
+.mascot-float {
+  position: fixed;
+  z-index: 60;
+  width: 144px;
+  height: 172px;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+.mascot-float.is-open {
+  z-index: 110;
+}
+.mascot-float:active {
+  cursor: grabbing;
+}
+.mascot-float-sprite {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  z-index: 1;
+  width: 112px;
+  max-height: 142px;
+  object-fit: contain;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 14px 12px rgba(0, 0, 0, 0.28));
+  pointer-events: none;
+}
+.mascot-float-sprite.is-wave {
+  animation: mascotWaveFloat 0.85s ease-in-out;
+}
+.mascot-float-sprite.is-jump {
+  animation: mascotJumpFloat 0.85s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.mascot-float-sprite.is-spin {
+  animation: mascotSpinFloat 0.85s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.mascot-float-bubble {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 239, 196, 0.3);
+  border-radius: 999px;
+  background: rgba(10, 14, 22, 0.72);
+  color: rgba(255, 239, 196, 0.86);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.mascot-float-panel {
+  position: absolute;
+  right: 0;
+  bottom: 148px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 92px;
+  padding: 8px;
+  border: 1px solid rgba(255, 239, 196, 0.24);
+  border-radius: 12px;
+  background: rgba(10, 14, 22, 0.9);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.mascot-float-panel button {
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 239, 196, 0.88);
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+.mascot-float-panel button:hover,
+.mascot-float-panel button:focus-visible {
+  border-color: rgba(255, 239, 196, 0.34);
+  background: rgba(255, 224, 131, 0.15);
+  outline: none;
+}
+.mascot-float-handle {
+  position: absolute;
+  right: 6px;
+  bottom: 2px;
+  z-index: 2;
+  color: rgba(10, 14, 22, 0.48);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+@keyframes mascotWaveFloat {
+  0%, 100% { transform: translateX(-50%) rotate(0deg); }
+  35% { transform: translateX(-50%) rotate(-7deg) scale(1.04); }
+  68% { transform: translateX(-50%) rotate(6deg) scale(1.04); }
+}
+@keyframes mascotJumpFloat {
+  0%, 100% { transform: translateX(-50%); }
+  45% { transform: translate(-50%, -18px) rotate(-3deg) scale(1.04); }
+}
+@keyframes mascotSpinFloat {
+  0% { transform: translateX(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mascot-float-sprite {
+    animation: none !important;
+  }
 }
 
 /* 正文文章：居中窄栏，舒适阅读宽度 */
@@ -1529,5 +1880,10 @@ canvas {
   }
   .wk-line-tag {
     font-size: 11.5px;
+  }
+
+  .mascot-float {
+    transform: scale(0.86);
+    transform-origin: bottom right;
   }
 }

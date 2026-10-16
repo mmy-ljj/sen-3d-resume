@@ -7,6 +7,8 @@ import NoiseOverlay from './ui/NoiseOverlay'
 import Resume from './ui/Resume'
 import Works from './ui/Works'
 import LoadingScreen from './ui/LoadingScreen'
+import GestureController from './gesture/GestureController'
+import InteractiveMascot from './ui/InteractiveMascot'
 import { useStore } from './store'
 
 function Backdrop() {
@@ -24,15 +26,15 @@ type Lang = 'en' | 'zh'
 
 const COPY = {
   en: {
-    title: 'About Sen',
+    title: 'About Lijiajie',
     paragraphs: [
-      "I'm Sen — a creative technologist living where code meets art. I spend my days around coding, creativity, playful interaction & design, and CG work. I love studying and combining skills across different fields — to create, and to explore more possibilities.",
+      "I'm Lijiajie — an automation student who is curious about artificial intelligence, AIGC, and interactive technology. I like learning by checking references, asking questions, and turning ideas into working experiments.",
     ],
   },
   zh: {
-    title: 'About Sen',
+    title: '关于李佳杰',
     paragraphs: [
-      '我是 Sen——一个游走在代码与艺术之间的创意技术人。我常年和 Coding、创意、有趣的交互 & 设计、CG 创作等打交道，喜欢研究并组合不同领域的技能，来创造并探索更多可能性。',
+      '我是李佳杰，一名自动化专业学生。我对人工智能、AIGC 和智能交互很感兴趣，习惯先查资料、问 AI、动手尝试，再向老师和学长学姐请教，把想法一步步做成可以运行的实验。',
     ],
   },
 }
@@ -123,6 +125,9 @@ export default function App() {
       {/* 加载遮罩：模型全部加载完成前覆盖全屏，完成后淡出 */}
       <LoadingScreen />
 
+      <GestureController />
+      <InteractiveMascot />
+
       {/* 固定的 3D 背景 */}
       <div className="scene-bg">
         <Canvas
@@ -170,12 +175,12 @@ export default function App() {
         <span className="hero-mark bl">+</span>
         <span className="hero-mark br">+</span>
         <div className="hero-meta hm-tl">
-          <span className="hm-name">Sen Zheng 郑越升</span>
-          <span>Creative Technologist</span>
+          <span className="hm-name">李佳杰 · Lijiajie</span>
+          <span>Automation · AI Learner</span>
         </div>
-        <div className="hero-meta hm-tr">Portfolio — 2026</div>
-        <div className="hero-meta hm-bl">Code · Art · Play</div>
-        <div className="hero-meta hm-right">Based in Shenzhen</div>
+        <div className="hero-meta hm-tr">3D Resume — 2026</div>
+        <div className="hero-meta hm-bl">AI · Interaction · Explore</div>
+        <div className="hero-meta hm-right">Virtual Simulation Lab</div>
       </motion.div>
 
       {/* 全屏胶片噪点蒙层（multiply 混合） */}

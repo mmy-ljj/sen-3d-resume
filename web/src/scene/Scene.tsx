@@ -1,10 +1,12 @@
 import { Suspense, useMemo, useRef, useEffect, type MutableRefObject } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
+import { useReducedMotion } from 'framer-motion'
 import { EffectComposer, Bloom, DepthOfField, SMAA } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import Env from './Env'
 import { FOCUS_POINTS, FRAMES_PER_NODE } from '../data/focusPoints'
+import { useStore } from '../store'
 
 useGLTF.preload(`${import.meta.env.BASE_URL}models/me.glb`)
 
@@ -18,21 +20,24 @@ const NODE_LINE = 0.3 // 节点"终点"参考线：条目顶部到达视口该�
 
 // 上下渐变背景球（包裹相机），两端颜色可调
 function GradientBackground() {
-  // glb 相机视角很窄(~23°)，只看到渐变中间一条；陡度把可见窄带拉伸出完整过渡
-  const top = '#6f906f'
-  const bottom = '#dbd3b5'
-  const steep = 1.4
+  // 深蓝底色与柔和的青色光晕呼应蓝色上衣，并给浅色简历文字留出对比度。
+  const top = '#172c45'
+  const bottom = '#080e1a'
+  const accent = '#2c6680'
+  const steep = 1.8
 
   const uniforms = useMemo(
     () => ({
       uTop: { value: new THREE.Color() },
       uBottom: { value: new THREE.Color() },
+      uAccent: { value: new THREE.Color() },
       uSteep: { value: 1 },
     }),
     []
   )
   uniforms.uTop.value.set(top)
   uniforms.uBottom.value.set(bottom)
+  uniforms.uAccent.value.set(accent)
   uniforms.uSteep.value = steep
 
   return (
@@ -52,12 +57,16 @@ function GradientBackground() {
         fragmentShader={/* glsl */ `
           uniform vec3 uTop;
           uniform vec3 uBottom;
+          uniform vec3 uAccent;
           uniform float uSteep;
           varying vec3 vDir;
           void main() {
             // 以地平线(y=0)为中心按陡度拉伸，narrow-fov 下也能看到完整过渡
             float t = clamp(vDir.y * uSteep * 0.5 + 0.5, 0.0, 1.0);
-            gl_FragColor = vec4(mix(uBottom, uTop, t), 1.0);
+            vec3 color = mix(uBottom, uTop, smoothstep(0.0, 1.0, t));
+            float halo = 1.0 - smoothstep(0.0, 0.62, length(vec2(vDir.x + 0.11, vDir.y - 0.07)));
+            color = mix(color, uAccent, halo * 0.23);
+            gl_FragColor = vec4(color, 1.0);
           }
         `}
       />
@@ -68,15 +77,15 @@ function GradientBackground() {
 // 所有光源（HDRI 环境 + 半球 + 主/补方向光）
 function Lights() {
   const c = {
-    envIntensity: 0.85,
-    hemiIntensity: 1.15,
-    hemiSky: '#ffffff',
-    hemiGround: '#404040',
-    keyIntensity: 2.35,
-    keyColor: '#ffd9c6',
+    envIntensity: 0.45,
+    hemiIntensity: 0.8,
+    hemiSky: '#dcefff',
+    hemiGround: '#25364d',
+    keyIntensity: 1.7,
+    keyColor: '#ffe1cb',
     keyPos: [5, 8, 5] as [number, number, number],
-    fillIntensity: 2.25,
-    fillColor: '#9fc6ff',
+    fillIntensity: 1.05,
+    fillColor: '#81c9e0',
     fillPos: [-5, 4, -4] as [number, number, number],
   }
 
@@ -141,16 +150,27 @@ function Man2({
     invertX: false,
     invertY: false,
     smooth: 0.44,
-    crossEye: 45,
+    crossEye: 12,
     crossRadius: 0.25,
   }
 
   const get = useThree((s) => s.get)
   const { scene, animations } = useGLTF(`${import.meta.env.BASE_URL}models/me.glb`)
+  const characterYaw = useStore((s) => s.characterYaw)
+  const gestureLook = useStore((s) => s.gestureLook)
+  const reducedMotion = useReducedMotion()
+  const smoothLook = useRef({ x: 0, y: 0 })
 
   // 克隆模型；收集眼睛对象、聚焦锚点对象、glb 自带相机、各锚点景深开关
-  const { model, eyes, points, startPoint, glbCam, focusNode, dof } = useMemo(() => {
+  const { model, characterRig, eyes, points, startPoint, glbCam, focusNode, dof } = useMemo(() => {
     const clone = scene.clone(true)
+    // Keep the authored camera and focus anchors outside the turning character.
+    const avatar = clone.getObjectByName('LijiajieAnimeAvatar') || clone
+    const visualChildren = avatar.children.filter((child: any) => !child.isCamera && !child.name.startsWith('focus'))
+    const characterRig = new THREE.Group()
+    characterRig.name = 'GestureCharacterRig'
+    avatar.add(characterRig)
+    visualChildren.forEach((child) => characterRig.add(child))
     const eyes: any[] = []
     const pmap: Record<string, any> = {}
     let startPoint: any = null
@@ -204,6 +224,7 @@ function Man2({
     const effRange = (o: any): number => ud(o).dofFocusRange ?? 0
     return {
       model: clone,
+      characterRig,
       eyes,
       points: pts,
       startPoint: start,
@@ -295,6 +316,11 @@ function Man2({
 
   useFrame((_, dt) => {
     const a = 1 - Math.pow(cam.damping, dt)
+    const targetYaw = THREE.MathUtils.degToRad(characterYaw)
+    characterRig.rotation.y = reducedMotion ? targetYaw : THREE.MathUtils.damp(characterRig.rotation.y, targetYaw, 10, dt)
+    const lookAlpha = reducedMotion ? 1 : 1 - Math.exp(-10 * dt)
+    smoothLook.current.x += (gestureLook.x - smoothLook.current.x) * lookAlpha
+    smoothLook.current.y += (gestureLook.y - smoothLook.current.y) * lookAlpha
 
     // 1) 由履历锚点（文档坐标）算连续索引 s：
     //    顶部 s≈-1，sysu 居中 s=0，hotsar=1 … zooop=4
@@ -458,8 +484,8 @@ function Man2({
       }
     }
 
-    // 4) 眼睛跟随（用当前激活相机做屏幕投影）；移动端 / 触屏则跳过
-    if (!eye.enabled || eyes.length === 0 || isMobile.current) return
+    // 4) 眼睛跟随（用当前激活相机做屏幕投影）；移动端由手势方向提供注视目标
+    if (!eye.enabled || eyes.length === 0) return
     const sx = eye.invertX ? -1 : 1
     const sy = eye.invertY ? -1 : 1
 
@@ -473,13 +499,13 @@ function Man2({
     ax /= eyes.length
     ay /= eyes.length
 
-    const mx = mouse.current.x - ax
-    const my = mouse.current.y - ay
-    const yawBase = sx * mx * THREE.MathUtils.degToRad(eye.maxYaw) * eye.gain
-    const pitch = sy * -my * THREE.MathUtils.degToRad(eye.maxPitch) * eye.gain
+    const mx = (isMobile.current ? 0 : mouse.current.x - ax) + smoothLook.current.x * 0.65
+    const my = (isMobile.current ? 0 : mouse.current.y - ay) + smoothLook.current.y * 0.65
+    const yawBase = THREE.MathUtils.clamp(sx * mx * eye.gain, -1, 1) * THREE.MathUtils.degToRad(eye.maxYaw)
+    const pitch = THREE.MathUtils.clamp(sy * -my * eye.gain, -1, 1) * THREE.MathUtils.degToRad(eye.maxPitch)
 
     const dist = Math.hypot(mx, my)
-    const convWeight = THREE.MathUtils.clamp(1 - dist / eye.crossRadius, 0, 1)
+    const convWeight = isMobile.current ? 0 : THREE.MathUtils.clamp(1 - dist / eye.crossRadius, 0, 1)
     const convRad = THREE.MathUtils.degToRad(eye.crossEye) * convWeight
 
     for (const e of eyes) {
@@ -487,7 +513,7 @@ function Man2({
       tmpEuler.current.set(pitch, yaw, 0)
       tmpQuat.current.setFromEuler(tmpEuler.current)
       desiredQuat.current.copy(tmpQuat.current).multiply(e.base)
-      e.obj.quaternion.slerp(desiredQuat.current, eye.smooth)
+      e.obj.quaternion.slerp(desiredQuat.current, reducedMotion ? 1 : 1 - Math.pow(1 - eye.smooth, dt * 60))
     }
   })
 
@@ -516,13 +542,13 @@ function Post2({
   dofRangeRef: MutableRefObject<number>
 }) {
   const post = {
-    bloomIntensity: 0.6,
-    bloomThreshold: 0.82,
+    bloomIntensity: 0.28,
+    bloomThreshold: 0.9,
     dof: true,
-    startBokeh: 7.4,
-    startRange: 2.0,
-    focusBokeh: 11.0,
-    focusRange: 0.15,
+    startBokeh: 2.0,
+    startRange: 3.0,
+    focusBokeh: 3.2,
+    focusRange: 0.9,
     startBlendFrame: 48,
     endBlendFrame: RESUME_FRAMES - 50, // 末节点附近回到"起始帧"景深档（原 250−50=200）
   }
