@@ -102,12 +102,6 @@ def cylinder_between(name, start, end, radius, material, parent, vertices=32):
     return obj
 
 
-def finger(name, start, end, radius, material, parent):
-    """Build a readable rounded finger from a smooth segment and a fingertip."""
-    cylinder_between(name + ".segment", start, end, radius, material, parent, 24)
-    uv_sphere(name + ".tip", end, (radius * 1.12, radius * 1.12, radius * 1.12), material, parent)
-
-
 def cone(name, location, radius, depth, material, parent, rotation=(0.0, 0.0, 0.0)):
     bpy.ops.mesh.primitive_cone_add(vertices=32, radius1=radius, radius2=0.0, depth=depth, location=location)
     obj = bpy.context.object
@@ -210,20 +204,12 @@ def add_avatar():
     cylinder_between("sleeve.L", (-0.34, 0.0, 0.27), (-0.56, -0.02, 0.41), 0.12, BLUE, root)
     cylinder_between("arm.L", (-0.56, -0.02, 0.41), (-0.68, -0.15, 0.68), 0.09, SKIN, root)
     uv_sphere("hand.L", (-0.69, -0.16, 0.72), (0.13, 0.11, 0.14), SKIN_LIGHT, root)
-    finger("thumb.L", (-0.70, -0.18, 0.77), (-0.72, -0.20, 0.94), 0.055, SKIN_LIGHT, root)
-    finger("index.L", (-0.78, -0.17, 0.78), (-0.82, -0.18, 0.96), 0.043, SKIN_LIGHT, root)
-    finger("middle.L", (-0.72, -0.15, 0.82), (-0.73, -0.13, 1.03), 0.046, SKIN_LIGHT, root)
-    finger("ring.L", (-0.66, -0.14, 0.80), (-0.63, -0.11, 0.98), 0.043, SKIN_LIGHT, root)
-    finger("pinky.L", (-0.61, -0.13, 0.76), (-0.56, -0.10, 0.90), 0.038, SKIN_LIGHT, root)
+    cylinder_between("thumb.L", (-0.70, -0.18, 0.77), (-0.72, -0.20, 0.94), 0.055, SKIN_LIGHT, root, 12)
 
     cylinder_between("sleeve.R", (0.34, 0.0, 0.27), (0.56, -0.02, 0.43), 0.12, BLUE, root)
     cylinder_between("arm.R", (0.56, -0.02, 0.43), (0.71, -0.22, 0.68), 0.09, SKIN, root)
     uv_sphere("hand.R", (0.75, -0.26, 0.71), (0.13, 0.11, 0.14), SKIN_LIGHT, root)
-    finger("thumb.R", (0.72, -0.29, 0.76), (0.81, -0.39, 0.88), 0.052, SKIN_LIGHT, root)
-    finger("index.R", (0.76, -0.29, 0.74), (0.96, -0.42, 0.79), 0.045, SKIN_LIGHT, root)
-    finger("middle.R", (0.79, -0.27, 0.76), (0.91, -0.32, 0.92), 0.046, SKIN_LIGHT, root)
-    finger("ring.R", (0.74, -0.24, 0.78), (0.84, -0.24, 0.90), 0.043, SKIN_LIGHT, root)
-    finger("pinky.R", (0.69, -0.21, 0.76), (0.76, -0.18, 0.86), 0.038, SKIN_LIGHT, root)
+    cylinder_between("index.R", (0.76, -0.29, 0.74), (0.96, -0.42, 0.79), 0.045, SKIN_LIGHT, root, 12)
 
     sparkle("anime-sparkle", (-0.47, -0.32, 0.94), root)
 
