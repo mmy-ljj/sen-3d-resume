@@ -128,10 +128,17 @@ export default function GestureController() {
   }, [cancelScroll, setGestureAim, setGestureLook])
 
   const trigger = useCallback((action: GestureAction) => {
-    setLastAction({ label: ACTION_LABEL[action], id: performance.now() })
+    const contextual = new CustomEvent('resume:gesture-action', { detail: { action }, cancelable: true })
+    window.dispatchEvent(contextual)
+    const label = contextual.defaultPrevented
+      ? action === 'thumbsUp' ? '✓ 打开当前介绍' : '✕ 关闭介绍'
+      : ACTION_LABEL[action]
+    setLastAction({ label, id: performance.now() })
     if (actionTimerRef.current !== null) window.clearTimeout(actionTimerRef.current)
     actionTimerRef.current = window.setTimeout(() => setLastAction(null), 1500)
-    if (action === 'up' || action === 'down') scrollTo(nextScrollTarget(action, scrollDestinationRef.current ?? window.scrollY))
+    if (contextual.defaultPrevented) {
+      // The visible introduction owns this action; do not also rotate or scroll.
+    } else if (action === 'up' || action === 'down') scrollTo(nextScrollTarget(action, scrollDestinationRef.current ?? window.scrollY))
     else if (action === 'left' || action === 'right') rotateCharacter(action === 'left' ? -22 : 22)
     else if (action === 'pinch') {
       toggleCinematicFocus()
@@ -250,8 +257,8 @@ export default function GestureController() {
     : feedback.phase === 'waiting' ? '请将手掌放入画面'
     : feedback.phase === 'release' ? '张掌停稳片刻，即可继续操作'
     : feedback.phase === 'uncertain' ? '姿势确认中，请张掌或保持手势'
-    : feedback.pose === 'thumbsUp' ? '保持点赞，进度满后人物回正'
-    : feedback.pose === 'fist' ? '保持握拳，进度满后回到开头'
+    : feedback.pose === 'thumbsUp' ? '保持点赞：在介绍卡片打开详情，其他位置人物回正'
+    : feedback.pose === 'fist' ? '保持握拳：关闭详情，其他位置回到开头'
     : feedback.pose === 'pinch' ? '保持捏合，切换电影景深模式'
     : '张掌滑动：上/下翻页，左/右转身；移动手掌控制视线'
 
@@ -266,7 +273,7 @@ export default function GestureController() {
         <span style={{ transform: `scaleX(${feedback.progress})` }} />
       </div>}
       <div className="gesture-guide" aria-label="手势说明">
-        <span>上/下 · 简介</span><span>左/右 · 转身</span><span>点赞 · 回正</span><span>握拳 · 回到开头</span>
+        <span>上/下 · 简介</span><span>左/右 · 转身</span><span>点赞 · 打开当前介绍 / 回正</span><span>握拳 · 关闭介绍 / 回到开头</span>
         <span>移动 · 控制视线</span><span>捏合 · {cinematicFocus ? '关闭' : '开启'}景深</span>
       </div>
       <div className="gesture-action-slot" role="status" aria-live="polite">

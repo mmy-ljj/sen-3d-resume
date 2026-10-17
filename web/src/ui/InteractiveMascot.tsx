@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
+import { playMascotSound } from './mascotSounds'
 
-type Action = 'idle' | 'wave' | 'jump' | 'spin'
+type Action = 'idle' | 'wave' | 'jump' | 'spin' | 'feed'
 type Point = { x: number; y: number }
 
 const WIDGET_WIDTH = 144
@@ -13,6 +14,8 @@ export default function InteractiveMascot() {
   const [position, setPosition] = useState<Point | null>(null)
   const [action, setAction] = useState<Action>('idle')
   const [open, setOpen] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const [friendship, setFriendship] = useState(0)
 
   useEffect(() => {
     const placeAtHome = () => {
@@ -32,6 +35,8 @@ export default function InteractiveMascot() {
   const play = (next: Action) => {
     setAction(next)
     setOpen(true)
+    if (next === 'feed') setFriendship((value) => value + 1)
+    if (next !== 'idle' && !muted) void playMascotSound(next).catch(() => {})
     if (timerRef.current !== null) window.clearTimeout(timerRef.current)
     timerRef.current = window.setTimeout(() => setAction('idle'), 900)
   }
@@ -64,7 +69,10 @@ export default function InteractiveMascot() {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
-    if (!wasMoved) setOpen((value) => !value)
+    if (!wasMoved) {
+      setOpen(true)
+      play('wave')
+    }
   }
 
   const resetPosition = () => {
@@ -83,25 +91,33 @@ export default function InteractiveMascot() {
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
+      onPointerCancel={() => { dragRef.current.active = false }}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); play('wave') }
+      }}
+      tabIndex={0}
       role="application"
-      aria-label="可拖动的动漫桌宠"
+      aria-label="可拖动的奶龙挂件，按回车互动"
     >
       <div className="mascot-float-bubble" aria-hidden="true">
-        {action === 'idle' ? '拖动我，点我互动' : action === 'wave' ? '你好！' : action === 'jump' ? '起飞！' : '转起来！'}
+        {action === 'idle' ? friendship ? `好感 +${friendship} · 再陪我玩！` : '拖动我，点我互动' : action === 'wave' ? '你好呀！' : action === 'jump' ? '起飞！' : action === 'feed' ? '啊呜！谢谢你！' : '转起来！'}
       </div>
       {open && (
         <div className="mascot-float-panel" role="group" aria-label="桌宠动作">
           <button type="button" onClick={() => play('wave')}>👋 挥手</button>
           <button type="button" onClick={() => play('jump')}>⬆ 跳跃</button>
           <button type="button" onClick={() => play('spin')}>🌀 转圈</button>
+          <button type="button" onClick={() => play('feed')}>🍪 喂点心</button>
+          <button type="button" onClick={() => setMuted((value) => !value)} aria-pressed={!muted}>{muted ? '🔇 开启声音' : '🔊 关闭声音'}</button>
           <button type="button" onClick={resetPosition}>↺ 归位</button>
+          <button type="button" onClick={() => setOpen(false)}>✕ 收起</button>
         </div>
       )}
       <img
         className={`mascot-float-sprite is-${action}`}
         src={`${import.meta.env.BASE_URL}images/interactive-mascot.png`}
-        alt="黄色动漫桌宠"
+        alt="奶龙挂件"
         draggable={false}
       />
       <span className="mascot-float-handle" aria-hidden="true">· · ·</span>

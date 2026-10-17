@@ -48,6 +48,9 @@ function SectionCard({
         <span className="wk-card-tagline">{section.tagline}</span>
       </div>
       <SectionWorks section={section} data={data} onOpen={onOpen} />
+      <p className="wk-gesture-hint">{data.closeLabel === 'Back'
+        ? 'Click or hold thumbs-up to open · Fist to close'
+        : '点击条目或镜头前点赞打开 · 握拳关闭'}</p>
     </div>
   )
 }
@@ -140,6 +143,7 @@ function WorkDetail({
         <button className="wk-detail-close" onClick={onClose} aria-label={data.closeLabel}>
           ✕
         </button>
+        <span className="wk-detail-gesture-hint">{data.closeLabel === 'Back' ? 'Fist to close · or click ✕' : '握拳关闭 · 或点击右上角 ✕'}</span>
 
         {banner && !bannerError && (
           <div className="wk-detail-banner">
@@ -198,6 +202,28 @@ export default function Works({ lang, innerRef }: { lang: 'en' | 'zh'; innerRef:
   // 竖滚 pin 转横移：测量整排卡片的实际可横移距离（px），竖滚进度 → 横移
   const galleryRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const onGesture = (event: Event) => {
+      const gesture = event as CustomEvent<{ action: string }>
+      if (gesture.detail.action === 'fist' && active) {
+        setActive(null)
+        event.preventDefault()
+      } else if (gesture.detail.action === 'thumbsUp' && !active) {
+        const cards = Array.from(trackRef.current?.querySelectorAll<HTMLElement>('.wk-card') ?? [])
+        const center = window.innerWidth / 2
+        const cardIndex = cards.findIndex((card) => {
+          const bounds = card.getBoundingClientRect()
+          return bounds.left <= center && bounds.right >= center
+        })
+        if (cardIndex >= 0) {
+          const item = sections[cardIndex]?.items?.[0]
+          if (item) { setActive(item); event.preventDefault() }
+        }
+      }
+    }
+    window.addEventListener('resume:gesture-action', onGesture)
+    return () => window.removeEventListener('resume:gesture-action', onGesture)
+  }, [active, sections])
   const { scrollYProgress } = useScroll({
     target: galleryRef,
     offset: ['start start', 'end end'],
