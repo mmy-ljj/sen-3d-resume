@@ -32,12 +32,13 @@ const RESUME: Record<'en' | 'zh', { title: string; entries: ResumeEntry[] }> = {
         points: ['A hardworking university student studying advanced mathematics, C programming, and engineering drawing.'],
       },
       {
-        period: '2026 – Now',
-        place: 'Artificial Intelligence',
-        role: 'Learning direction',
+        period: 'About me',
+        place: 'Personality',
+        role: 'INFP · Sagittarius',
         points: [
-          'Exploring AI tools, AIGC, intelligent interaction, and data-driven optimization.',
-          'Interested in turning creative ideas into useful experiments.',
+          'Quiet and shy with new people, but cheerful and open with those I know well.',
+          'I enjoy listening, understanding how others feel, and sharing my own ideas sincerely.',
+          'Curious about new things, I also value time alone to reflect and find inspiration.',
         ],
       },
       {
@@ -76,12 +77,13 @@ const RESUME: Record<'en' | 'zh', { title: string; entries: ResumeEntry[] }> = {
         points: ['一个正在学高数、C 语言和工程制图的苦命大学生。'],
       },
       {
-        period: '2026 – 至今',
-        place: '人工智能方向',
-        role: '学习方向',
+        period: '关于我',
+        place: '个人性格',
+        role: 'INFP · 射手座',
         points: [
-          '关注 AI 工具、AIGC、智能交互和数据驱动优化。',
-          '希望把有趣的想法一步步做成实用的小实验。',
+          '面对不熟悉的人有些内向腼腆，和熟悉的人在一起则开朗大方。',
+          '喜欢倾听，也愿意理解别人的感受，认真表达自己的想法。',
+          '对新鲜事物保持好奇，也喜欢独处时整理思路、寻找灵感。',
         ],
       },
       {
