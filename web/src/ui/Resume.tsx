@@ -29,7 +29,7 @@ const RESUME: Record<'en' | 'zh', { title: string; entries: ResumeEntry[] }> = {
         period: '2026 – Now',
         place: 'Automation 2606',
         role: 'Automation student',
-        points: ['Learning control, programming, and the foundations of intelligent systems.'],
+        points: ['A hardworking university student studying advanced mathematics, C programming, and engineering drawing.'],
       },
       {
         period: '2026 – Now',
@@ -73,7 +73,7 @@ const RESUME: Record<'en' | 'zh', { title: string; entries: ResumeEntry[] }> = {
         period: '2026 – 至今',
         place: '自动化2606班',
         role: '自动化专业学生',
-        points: ['正在学习控制、编程，以及智能系统相关基础。'],
+        points: ['一个正在学高数、C 语言和工程制图的苦命大学生。'],
       },
       {
         period: '2026 – 至今',
