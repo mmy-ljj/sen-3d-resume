@@ -44,14 +44,20 @@ def parent_to(obj, parent):
     return obj
 
 
+def smooth_mesh(obj):
+    """Keep curved parts smooth after GLB export, including procedural primitives."""
+    for polygon in obj.data.polygons:
+        polygon.use_smooth = True
+    return obj
+
+
 def uv_sphere(name, location, scale, material, parent):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=40, ring_count=24, location=location)
     obj = bpy.context.object
     obj.name = name
     obj.scale = scale
     obj.data.materials.append(material)
-    for polygon in obj.data.polygons:
-        polygon.use_smooth = True
+    smooth_mesh(obj)
     parent_to(obj, parent)
     return obj
 
@@ -65,15 +71,18 @@ def cube(name, location, scale, material, parent, bevel=0.04):
     if bevel:
         modifier = obj.modifiers.new("soft edges", "BEVEL")
         modifier.width = bevel
-        modifier.segments = 3
+        modifier.segments = 5
         bpy.context.view_layer.objects.active = obj
         bpy.ops.object.modifier_apply(modifier=modifier.name)
+        normal_modifier = obj.modifiers.new("weighted normals", "WEIGHTED_NORMAL")
+        normal_modifier.keep_sharp = True
+        bpy.ops.object.modifier_apply(modifier=normal_modifier.name)
     obj.data.materials.append(material)
     parent_to(obj, parent)
     return obj
 
 
-def cylinder_between(name, start, end, radius, material, parent, vertices=16):
+def cylinder_between(name, start, end, radius, material, parent, vertices=32):
     start_v = Vector(start)
     end_v = Vector(end)
     direction = end_v - start_v
@@ -88,16 +97,18 @@ def cylinder_between(name, start, end, radius, material, parent, vertices=16):
     obj.rotation_mode = "QUATERNION"
     obj.rotation_quaternion = direction.to_track_quat("Z", "Y")
     obj.data.materials.append(material)
+    smooth_mesh(obj)
     parent_to(obj, parent)
     return obj
 
 
 def cone(name, location, radius, depth, material, parent, rotation=(0.0, 0.0, 0.0)):
-    bpy.ops.mesh.primitive_cone_add(vertices=16, radius1=radius, radius2=0.0, depth=depth, location=location)
+    bpy.ops.mesh.primitive_cone_add(vertices=32, radius1=radius, radius2=0.0, depth=depth, location=location)
     obj = bpy.context.object
     obj.name = name
     obj.rotation_euler = rotation
     obj.data.materials.append(material)
+    smooth_mesh(obj)
     parent_to(obj, parent)
     return obj
 
@@ -106,8 +117,8 @@ def torus(name, location, major, minor, material, parent):
     bpy.ops.mesh.primitive_torus_add(
         major_radius=major,
         minor_radius=minor,
-        major_segments=32,
-        minor_segments=8,
+        major_segments=48,
+        minor_segments=16,
         location=location,
         rotation=(math.pi / 2.0, 0.0, 0.0),
     )
@@ -115,6 +126,7 @@ def torus(name, location, major, minor, material, parent):
     obj.name = name
     obj.scale = (1.22, 1.0, 1.0)
     obj.data.materials.append(material)
+    smooth_mesh(obj)
     parent_to(obj, parent)
     return obj
 
@@ -134,6 +146,8 @@ def add_avatar():
     # Compact anime proportions: oversized head, blue tech shirt, dark pants.
     torso = uv_sphere("man", (0.0, 0.0, 0.02), (0.40, 0.26, 0.50), BLUE, root)
     torso.scale.y *= 0.85
+    cylinder_between("shirt-seam.L", (-0.30, -0.235, 0.28), (-0.07, -0.275, 0.07), 0.012, BLUE_DARK, root, 16)
+    cylinder_between("shirt-seam.R", (0.30, -0.235, 0.28), (0.07, -0.275, 0.07), 0.012, BLUE_DARK, root, 16)
     uv_sphere("shirt-neck", (0.0, -0.235, 0.42), (0.17, 0.04, 0.055), BLUE_DARK, root)
     cylinder_between("collar.L", (-0.17, -0.245, 0.44), (0.0, -0.278, 0.35), 0.018, CYAN, root, 12)
     cylinder_between("collar.R", (0.17, -0.245, 0.44), (0.0, -0.278, 0.35), 0.018, CYAN, root, 12)
@@ -148,11 +162,15 @@ def add_avatar():
     cube("pants.R", (0.19, 0.0, -0.62), (0.18, 0.22, 0.38), PANTS, root, 0.09)
     cube("shoe.L", (-0.19, -0.06, -1.02), (0.20, 0.28, 0.10), BLACK, root, 0.07)
     cube("shoe.R", (0.19, -0.06, -1.02), (0.20, 0.28, 0.10), BLACK, root, 0.07)
+    cube("sole.L", (-0.19, -0.075, -1.125), (0.205, 0.29, 0.028), BLUE_DARK, root, 0.022)
+    cube("sole.R", (0.19, -0.075, -1.125), (0.205, 0.29, 0.028), BLUE_DARK, root, 0.022)
 
     # Head, ears, hair cap and playful hair spikes.
     uv_sphere("head", (0.0, 0.0, 0.76), (0.38, 0.30, 0.40), SKIN, root)
     uv_sphere("ear.L", (-0.36, 0.0, 0.76), (0.062, 0.08, 0.095), SKIN, root)
     uv_sphere("ear.R", (0.36, 0.0, 0.76), (0.062, 0.08, 0.095), SKIN, root)
+    uv_sphere("ear-inner.L", (-0.365, -0.064, 0.76), (0.028, 0.018, 0.046), SKIN_LIGHT, root)
+    uv_sphere("ear-inner.R", (0.365, -0.064, 0.76), (0.028, 0.018, 0.046), SKIN_LIGHT, root)
     uv_sphere("hair-back", (0.0, 0.025, 1.055), (0.395, 0.295, 0.18), HAIR, root)
     for i, (x, z, width, tilt) in enumerate(
         [(-0.27, 1.02, 0.105, -0.22), (-0.13, 1.035, 0.13, -0.13), (0.035, 1.045, 0.14, 0.10), (0.20, 1.025, 0.12, 0.18), (0.30, 1.00, 0.075, 0.24)]
@@ -169,6 +187,8 @@ def add_avatar():
     uv_sphere("pupil.R", (0.0, -1.42, 0.0), (0.40, 0.26, 0.48), BLACK, right_eye)
     uv_sphere("cheek.L", (-0.22, -0.278, 0.64), (0.055, 0.012, 0.022), SKIN_LIGHT, root)
     uv_sphere("cheek.R", (0.22, -0.278, 0.64), (0.055, 0.012, 0.022), SKIN_LIGHT, root)
+    cylinder_between("brow.L", (-0.22, -0.315, 0.90), (-0.07, -0.325, 0.92), 0.022, HAIR, root, 20)
+    cylinder_between("brow.R", (0.07, -0.325, 0.92), (0.22, -0.315, 0.90), 0.022, HAIR, root, 20)
 
     # Oversized round glasses, bridge, and nose.
     torus("glasses-frame.L", (-0.14, -0.323, 0.79), 0.095, 0.009, BLACK, root)
