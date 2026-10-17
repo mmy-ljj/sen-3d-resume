@@ -5,6 +5,7 @@ import { useReducedMotion } from 'framer-motion'
 import { EffectComposer, Bloom, DepthOfField, SMAA, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import Env from './Env'
+import SimulationEnvironment from './SimulationEnvironment'
 import { FOCUS_POINTS, FRAMES_PER_NODE } from '../data/focusPoints'
 import { useStore } from '../store'
 
@@ -662,6 +663,7 @@ export default function Scene() {
     <>
       <GradientBackground />
       <ModelHalo />
+      <SimulationEnvironment />
 
       <Suspense fallback={null}>
         <Lights />

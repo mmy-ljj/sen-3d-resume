@@ -278,6 +278,31 @@ canvas {
 }
 
 /* ---------- 摄像头手势控制 ---------- */
+.simulation-toggle {
+  position: fixed;
+  left: clamp(16px, 3vw, 42px);
+  bottom: clamp(16px, 3vh, 32px);
+  z-index: 81;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px;
+  border: 1px solid rgba(103, 220, 233, 0.38);
+  border-radius: 999px;
+  color: #d6f7fa;
+  background: rgba(8, 21, 34, 0.72);
+  backdrop-filter: blur(12px);
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .1em;
+  cursor: pointer;
+}
+.simulation-toggle:hover,
+.simulation-toggle:focus-visible { border-color: #67dce9; background: rgba(17, 51, 70, .88); }
+.simulation-toggle-dot { width: 6px; height: 6px; border-radius: 50%; background: #67dce9; box-shadow: 0 0 9px #67dce9; }
+.simulation-toggle[aria-pressed="false"] .simulation-toggle-dot { background: #748e98; box-shadow: none; }
+@media (max-width: 640px) {
+  .simulation-toggle { bottom: 16px; left: 16px; max-width: calc(100vw - 260px); font-size: 10px; padding: 9px; }
+}
 .gesture-panel {
   position: fixed;
   top: clamp(16px, 3vh, 32px);

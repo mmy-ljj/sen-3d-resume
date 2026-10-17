@@ -95,6 +95,8 @@ function LangToggle({ lang, onToggle }: { lang: Lang; onToggle: () => void }) {
 
 export default function App() {
   const [lang, setLang] = useState<Lang>('zh')
+  const simulationVisible = useStore((s) => s.simulationVisible)
+  const toggleSimulation = useStore((s) => s.toggleSimulation)
   const { scrollY } = useScroll()
   // 作品区蒙层：以作品区顶部从视口底进入到视口中部的进度，驱动 3D 渐暗 + 模糊
   const worksRef = useRef(null)
@@ -127,6 +129,16 @@ export default function App() {
 
       <GestureController />
       <InteractiveMascot />
+      <button
+        className="simulation-toggle"
+        type="button"
+        aria-pressed={simulationVisible}
+        aria-label={simulationVisible ? '关闭虚拟仿真背景' : '开启虚拟仿真背景'}
+        onClick={toggleSimulation}
+      >
+        <span className="simulation-toggle-dot" aria-hidden="true" />
+        仿真场景 {simulationVisible ? 'ON' : 'OFF'}
+      </button>
 
       {/* 固定的 3D 背景 */}
       <div className="scene-bg">
