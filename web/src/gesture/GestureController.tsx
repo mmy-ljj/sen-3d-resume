@@ -10,7 +10,7 @@ const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmark
 const ACTION_LABEL: Record<GestureAction, string> = {
   up: '↑ 下一段简介', down: '↓ 上一段简介',
   left: '← 人物左转', right: '→ 人物右转',
-  thumbsUp: '✓ 人物回正', fist: '↟ 回到简介开头',
+  thumbsUp: '✓ 人物回正', fist: '↟ 回到简介开头', pinch: '◌ 切换景深模式',
 }
 const INITIAL: Feedback = { phase: 'waiting', pose: 'none', progress: 0 }
 
@@ -19,6 +19,8 @@ function distance(a: NormalizedLandmark, b: NormalizedLandmark, aspect: number) 
 }
 
 function classifyPose(points: NormalizedLandmark[], aspect: number, scale: number): Pose {
+  const pinchDistance = distance(points[4], points[8], aspect)
+  if (pinchDistance < Math.max(0.035, scale * 0.68)) return 'pinch'
   const extended = [[8, 6], [12, 10], [16, 14], [20, 18]].filter(([tip, pip]) =>
     distance(points[tip], points[0], aspect) > distance(points[pip], points[0], aspect) * 1.12,
   ).length
@@ -63,6 +65,7 @@ export default function GestureController() {
   const sessionRef = useRef(0)
   const videoTimeRef = useRef(-1)
   const machineRef = useRef(new GestureMachine())
+  const aimRef = useRef({ x: 0, y: 0 })
   const [feedback, setFeedback] = useState<Feedback>(INITIAL)
   const [status, setStatus] = useState<Status>('idle')
   const [lastAction, setLastAction] = useState<{ label: string; id: number } | null>(null)
@@ -70,6 +73,9 @@ export default function GestureController() {
   const rotateCharacter = useStore((s) => s.rotateCharacter)
   const resetCharacter = useStore((s) => s.resetCharacter)
   const setGestureLook = useStore((s) => s.setGestureLook)
+  const setGestureAim = useStore((s) => s.setGestureAim)
+  const toggleCinematicFocus = useStore((s) => s.toggleCinematicFocus)
+  const cinematicFocus = useStore((s) => s.cinematicFocus)
   const enabled = status === 'ready'
 
   const cancelScroll = useCallback(() => {
@@ -114,10 +120,12 @@ export default function GestureController() {
     machineRef.current = new GestureMachine()
     videoTimeRef.current = -1
     setGestureLook({ x: 0, y: 0 })
+    setGestureAim({ x: 0, y: 0 })
+    aimRef.current = { x: 0, y: 0 }
     setFeedback(INITIAL)
     setLastAction(null)
     setStatus('idle')
-  }, [cancelScroll, setGestureLook])
+  }, [cancelScroll, setGestureAim, setGestureLook])
 
   const trigger = useCallback((action: GestureAction) => {
     setLastAction({ label: ACTION_LABEL[action], id: performance.now() })
@@ -125,7 +133,9 @@ export default function GestureController() {
     actionTimerRef.current = window.setTimeout(() => setLastAction(null), 1500)
     if (action === 'up' || action === 'down') scrollTo(nextScrollTarget(action, scrollDestinationRef.current ?? window.scrollY))
     else if (action === 'left' || action === 'right') rotateCharacter(action === 'left' ? -22 : 22)
-    else {
+    else if (action === 'pinch') {
+      toggleCinematicFocus()
+    } else {
       resetCharacter()
       if (action === 'fist') scrollTo(0)
     }
@@ -135,7 +145,7 @@ export default function GestureController() {
     })
     if (lookTimerRef.current !== null) window.clearTimeout(lookTimerRef.current)
     lookTimerRef.current = window.setTimeout(() => setGestureLook({ x: 0, y: 0 }), 850)
-  }, [resetCharacter, rotateCharacter, scrollTo, setGestureLook])
+  }, [resetCharacter, rotateCharacter, scrollTo, setGestureLook, toggleCinematicFocus])
 
   const processFrame = useCallback((time: number) => {
     const video = videoRef.current
@@ -153,6 +163,19 @@ export default function GestureController() {
           y: p.y + points[id].y / 5,
         }), { x: 0, y: 0 }) : null
         const next = machineRef.current.update(pose, center, scale, time)
+        const palm = points ? [0, 5, 9, 13, 17].reduce((p, id) => ({
+          x: p.x + points[id].x / 5,
+          y: p.y + points[id].y / 5,
+        }), { x: 0, y: 0 }) : null
+        const aim = palm ? {
+          // MediaPipe uses the unmirrored camera coordinate; invert x to match the mirrored preview.
+          x: Math.max(-1, Math.min(1, (0.5 - palm.x) * 2.2)),
+          y: Math.max(-1, Math.min(1, (0.5 - palm.y) * 2.2)),
+        } : { x: 0, y: 0 }
+        if (Math.hypot(aim.x - aimRef.current.x, aim.y - aimRef.current.y) > 0.035) {
+          aimRef.current = aim
+          setGestureAim(aim)
+        }
         const progress = Math.round(next.progress * 20) / 20
         setFeedback((previous) => previous.phase === next.phase && previous.pose === next.pose && previous.progress === progress
           ? previous : { phase: next.phase, pose: next.pose, progress })
@@ -169,7 +192,7 @@ export default function GestureController() {
       }
     }
     rafRef.current = requestAnimationFrame(processFrame)
-  }, [setGestureLook, stopCamera, trigger])
+  }, [setGestureAim, setGestureLook, stopCamera, trigger])
 
   const startCamera = useCallback(async () => {
     const session = ++sessionRef.current
@@ -229,7 +252,8 @@ export default function GestureController() {
     : feedback.phase === 'uncertain' ? '姿势确认中，请张掌或保持手势'
     : feedback.pose === 'thumbsUp' ? '保持点赞，进度满后人物回正'
     : feedback.pose === 'fist' ? '保持握拳，进度满后回到开头'
-    : '张掌滑动：上/下翻页，左/右转身'
+    : feedback.pose === 'pinch' ? '保持捏合，切换电影景深模式'
+    : '张掌滑动：上/下翻页，左/右转身；移动手掌控制视线'
 
   return (
     <aside className={`gesture-panel ${enabled ? 'is-active' : ''}`} aria-label="手势交互控制">
@@ -243,6 +267,7 @@ export default function GestureController() {
       </div>}
       <div className="gesture-guide" aria-label="手势说明">
         <span>上/下 · 简介</span><span>左/右 · 转身</span><span>点赞 · 回正</span><span>握拳 · 回到开头</span>
+        <span>移动 · 控制视线</span><span>捏合 · {cinematicFocus ? '关闭' : '开启'}景深</span>
       </div>
       <div className="gesture-action-slot" role="status" aria-live="polite">
         <AnimatePresence mode="wait">

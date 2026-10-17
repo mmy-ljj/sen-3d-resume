@@ -1,5 +1,5 @@
-export type Pose = 'open' | 'fist' | 'thumbsUp' | 'other' | 'none'
-export type GestureAction = 'up' | 'down' | 'left' | 'right' | 'thumbsUp' | 'fist'
+export type Pose = 'open' | 'fist' | 'thumbsUp' | 'pinch' | 'other' | 'none'
+export type GestureAction = 'up' | 'down' | 'left' | 'right' | 'thumbsUp' | 'fist' | 'pinch'
 type Point = { x: number; y: number }
 export type Feedback = {
   phase: 'waiting' | 'uncertain' | 'ready' | 'holding' | 'release'
@@ -71,8 +71,8 @@ export class GestureMachine {
       this.tracking = null
       return { phase: 'release', pose, progress: 1, action }
     }
-    if (pose === 'thumbsUp' || pose === 'fist') {
-      const duration = pose === 'thumbsUp' ? 650 : 900
+    if (pose === 'thumbsUp' || pose === 'fist' || pose === 'pinch') {
+      const duration = pose === 'thumbsUp' ? 650 : pose === 'pinch' ? 720 : 900
       return held >= duration ? fire(pose) : { phase: 'holding', pose, progress: held / duration }
     }
     if (pose === 'open' && this.filtered) {

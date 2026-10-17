@@ -66,3 +66,11 @@ test('uncertain pose changes reset the hold before committing an action', () => 
   assert.equal(feed(machine, 'thumbsUp', 675, 1250, 25).length, 0)
   assert.equal(feed(machine, 'thumbsUp', 1275, 1400, 25).length, 1)
 })
+
+test('a pinch toggles once and re-arms after an open palm', () => {
+  const machine = new GestureMachine()
+  assert.deepEqual(feed(machine, 'pinch', 0, 1600).map((event) => event.action), ['pinch'])
+  assert.equal(feed(machine, 'pinch', 1650, 2600).length, 0)
+  feed(machine, 'open', 2650, 3150)
+  assert.deepEqual(feed(machine, 'pinch', 3200, 4300).map((event) => event.action), ['pinch'])
+})

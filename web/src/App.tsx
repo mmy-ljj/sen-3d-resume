@@ -132,11 +132,11 @@ export default function App() {
       <div className="scene-bg">
         <Canvas
           shadows={{ type: THREE.PCFShadowMap }}
-          dpr={[1, 1.5]}
+          dpr={[1, 1.35]}
           camera={{ position: [0, 5, 19], fov: 39, near: 0.1, far: 500 }}
           gl={{ antialias: false, stencil: false, depth: true, toneMapping: THREE.ACESFilmicToneMapping }}
         >
-          <color attach="background" args={['#0a0e16']} />
+          <color attach="background" args={['#070c16']} />
           <Suspense fallback={null}>
             <Backdrop />
             <Scene />

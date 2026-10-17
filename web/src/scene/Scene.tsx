@@ -2,7 +2,7 @@ import { Suspense, useMemo, useRef, useEffect, type MutableRefObject } from 'rea
 import { useThree, useFrame } from '@react-three/fiber'
 import { useGLTF } from '@react-three/drei'
 import { useReducedMotion } from 'framer-motion'
-import { EffectComposer, Bloom, DepthOfField, SMAA } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, DepthOfField, SMAA, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import Env from './Env'
 import { FOCUS_POINTS, FRAMES_PER_NODE } from '../data/focusPoints'
@@ -21,10 +21,10 @@ const NODE_LINE = 0.3 // 节点"终点"参考线：条目顶部到达视口该�
 // 上下渐变背景球（包裹相机），两端颜色可调
 function GradientBackground() {
   // 深蓝底色与柔和的青色光晕呼应蓝色上衣，并给浅色简历文字留出对比度。
-  const top = '#172c45'
-  const bottom = '#080e1a'
-  const accent = '#2c6680'
-  const steep = 1.8
+  const top = '#17334d'
+  const bottom = '#050914'
+  const accent = '#2c7285'
+  const steep = 1.65
 
   const uniforms = useMemo(
     () => ({
@@ -32,6 +32,7 @@ function GradientBackground() {
       uBottom: { value: new THREE.Color() },
       uAccent: { value: new THREE.Color() },
       uSteep: { value: 1 },
+      uTime: { value: 0 },
     }),
     []
   )
@@ -39,6 +40,9 @@ function GradientBackground() {
   uniforms.uBottom.value.set(bottom)
   uniforms.uAccent.value.set(accent)
   uniforms.uSteep.value = steep
+  useFrame((_, delta) => {
+    uniforms.uTime.value += delta
+  })
 
   return (
     <mesh scale={100}>
@@ -59,13 +63,27 @@ function GradientBackground() {
           uniform vec3 uBottom;
           uniform vec3 uAccent;
           uniform float uSteep;
+          uniform float uTime;
           varying vec3 vDir;
+          float hash21(vec2 p) {
+            p = fract(p * vec2(123.34, 456.21));
+            p += dot(p, p + 45.32);
+            return fract(p.x * p.y);
+          }
           void main() {
             // 以地平线(y=0)为中心按陡度拉伸，narrow-fov 下也能看到完整过渡
             float t = clamp(vDir.y * uSteep * 0.5 + 0.5, 0.0, 1.0);
             vec3 color = mix(uBottom, uTop, smoothstep(0.0, 1.0, t));
-            float halo = 1.0 - smoothstep(0.0, 0.62, length(vec2(vDir.x + 0.11, vDir.y - 0.07)));
-            color = mix(color, uAccent, halo * 0.23);
+            float halo = 1.0 - smoothstep(0.0, 0.78, length(vec2(vDir.x * 0.82, vDir.y - 0.03)));
+            float aura = exp(-length(vec2(vDir.x * 1.45, vDir.y - 0.10)) * 4.2);
+            color = mix(color, uAccent, halo * 0.22 + aura * 0.14);
+            float band = exp(-pow((vDir.y - sin(vDir.x * 4.8 + uTime * 0.08) * 0.08 - 0.16) / 0.055, 2.0));
+            color += vec3(0.035, 0.12, 0.15) * band;
+            vec2 starCell = floor((vDir.xy + 1.0) * 84.0);
+            float star = step(0.9965, hash21(starCell));
+            color += vec3(0.35, 0.72, 0.78) * star * (0.35 + 0.2 * sin(uTime * 0.7 + hash21(starCell) * 8.0));
+            float edge = smoothstep(0.55, 1.05, length(vDir.xy));
+            color *= 1.0 - edge * 0.28;
             gl_FragColor = vec4(color, 1.0);
           }
         `}
@@ -77,16 +95,19 @@ function GradientBackground() {
 // 所有光源（HDRI 环境 + 半球 + 主/补方向光）
 function Lights() {
   const c = {
-    envIntensity: 0.45,
-    hemiIntensity: 0.8,
+    envIntensity: 0.5,
+    hemiIntensity: 0.58,
     hemiSky: '#dcefff',
-    hemiGround: '#25364d',
-    keyIntensity: 1.7,
+    hemiGround: '#16243b',
+    keyIntensity: 2.1,
     keyColor: '#ffe1cb',
     keyPos: [5, 8, 5] as [number, number, number],
-    fillIntensity: 1.05,
+    fillIntensity: 0.8,
     fillColor: '#81c9e0',
     fillPos: [-5, 4, -4] as [number, number, number],
+    rimIntensity: 1.35,
+    rimColor: '#6cd8e8',
+    rimPos: [0, 5, -6] as [number, number, number],
   }
 
   return (
@@ -109,7 +130,29 @@ function Lights() {
         shadow-mapSize={[2048, 2048]}
       />
       <directionalLight position={c.fillPos} intensity={c.fillIntensity} color={c.fillColor} />
+      <pointLight position={c.rimPos} intensity={c.rimIntensity} color={c.rimColor} distance={18} decay={2} />
     </>
+  )
+}
+
+// 模型背后的柔光层：把轮廓从深色渐变里托出来，又不会盖住人物材质。
+function ModelHalo() {
+  const uniforms = useMemo(() => ({
+    uColor: { value: new THREE.Color('#52bfd0') },
+    uOpacity: { value: 0.26 },
+  }), [])
+  return (
+    <mesh position={[0, 1.45, -2.6]} scale={[4.4, 5.8, 1]} renderOrder={-1}>
+      <planeGeometry args={[1, 1]} />
+      <shaderMaterial
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        uniforms={uniforms}
+        vertexShader="varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}"
+        fragmentShader="uniform vec3 uColor; uniform float uOpacity; varying vec2 vUv; void main(){float d=distance(vUv,vec2(0.5)); float a=pow(1.0-smoothstep(0.05,0.72,d),2.2)*uOpacity; gl_FragColor=vec4(uColor,a);}"
+      />
+    </mesh>
   )
 }
 
@@ -158,6 +201,7 @@ function Man2({
   const { scene, animations } = useGLTF(`${import.meta.env.BASE_URL}models/me.glb`)
   const characterYaw = useStore((s) => s.characterYaw)
   const gestureLook = useStore((s) => s.gestureLook)
+  const gestureAim = useStore((s) => s.gestureAim)
   const reducedMotion = useReducedMotion()
   const smoothLook = useRef({ x: 0, y: 0 })
 
@@ -180,6 +224,12 @@ function Man2({
       if (o.isMesh) {
         o.castShadow = true
         o.receiveShadow = true
+        const mats = Array.isArray(o.material) ? o.material : [o.material]
+        mats.forEach((mat: any) => {
+          if ('envMapIntensity' in mat) mat.envMapIntensity = Math.min(1.35, Math.max(0.8, mat.envMapIntensity ?? 1))
+          if ('roughness' in mat && mat.roughness > 0.92) mat.roughness = 0.84
+          mat.needsUpdate = true
+        })
       }
       if (o.isCamera) glbCam = o
       // 首页锚点：兼容旧名 focus-start 与 intro3d 统一命名 focus-0
@@ -319,8 +369,10 @@ function Man2({
     const targetYaw = THREE.MathUtils.degToRad(characterYaw)
     characterRig.rotation.y = reducedMotion ? targetYaw : THREE.MathUtils.damp(characterRig.rotation.y, targetYaw, 10, dt)
     const lookAlpha = reducedMotion ? 1 : 1 - Math.exp(-10 * dt)
-    smoothLook.current.x += (gestureLook.x - smoothLook.current.x) * lookAlpha
-    smoothLook.current.y += (gestureLook.y - smoothLook.current.y) * lookAlpha
+    const targetLookX = gestureAim.x * 0.78 + gestureLook.x * 0.38
+    const targetLookY = gestureAim.y * 0.78 + gestureLook.y * 0.38
+    smoothLook.current.x += (targetLookX - smoothLook.current.x) * lookAlpha
+    smoothLook.current.y += (targetLookY - smoothLook.current.y) * lookAlpha
 
     // 1) 由履历锚点（文档坐标）算连续索引 s：
     //    顶部 s≈-1，sysu 居中 s=0，hotsar=1 … zooop=4
@@ -541,9 +593,10 @@ function Post2({
   dofBokehRef: MutableRefObject<number>
   dofRangeRef: MutableRefObject<number>
 }) {
+  const cinematicFocus = useStore((s) => s.cinematicFocus)
   const post = {
-    bloomIntensity: 0.28,
-    bloomThreshold: 0.9,
+    bloomIntensity: 0.34,
+    bloomThreshold: 0.82,
     dof: true,
     startBokeh: 2.0,
     startRange: 3.0,
@@ -566,11 +619,11 @@ function Post2({
     const w = Math.max(wStart, wEnd)
     if (dofBokehRef && dofBokehRef.current >= 0) {
       // glb 自带逐锚点景深参数（intro3d 导出）：直接采用，忠实还原 intro3d 的虚化强度/清晰范围（bokeh=0 即该点关景深）。
-      e.bokehScale = dofBokehRef.current
+      e.bokehScale = cinematicFocus ? dofBokehRef.current : 0
       if (e.cocMaterial) e.cocMaterial.focusRange = Math.max(1e-4, dofRangeRef ? dofRangeRef.current : post.focusRange)
     } else {
       // 老 glb（无逐锚点参数）：沿用原全局帧混合档位。
-      e.bokehScale = THREE.MathUtils.lerp(post.focusBokeh, post.startBokeh, w)
+      e.bokehScale = cinematicFocus ? THREE.MathUtils.lerp(post.focusBokeh, post.startBokeh, w) : 0
       if (e.cocMaterial) e.cocMaterial.focusRange = THREE.MathUtils.lerp(post.focusRange, post.startRange, w)
     }
   })
@@ -592,6 +645,7 @@ function Post2({
         luminanceThreshold={post.bloomThreshold}
         luminanceSmoothing={0.3}
       />
+      <Vignette eskil={false} offset={0.24} darkness={0.42} />
       <SMAA />
     </EffectComposer>
   )
@@ -607,6 +661,7 @@ export default function Scene() {
   return (
     <>
       <GradientBackground />
+      <ModelHalo />
 
       <Suspense fallback={null}>
         <Lights />

@@ -56,9 +56,10 @@ canvas {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 76% 68% at 50% 43%, transparent 34%, rgba(3, 8, 18, 0.42) 100%),
-    repeating-linear-gradient(0deg, transparent 0 63px, rgba(125, 200, 220, 0.035) 64px),
-    repeating-linear-gradient(90deg, transparent 0 63px, rgba(125, 200, 220, 0.035) 64px);
+    radial-gradient(ellipse 54% 58% at 50% 43%, transparent 28%, rgba(3, 8, 18, 0.3) 100%),
+    linear-gradient(120deg, rgba(5, 10, 23, 0.26), transparent 42%, rgba(7, 33, 47, 0.16)),
+    repeating-linear-gradient(0deg, transparent 0 63px, rgba(125, 200, 220, 0.028) 64px),
+    repeating-linear-gradient(90deg, transparent 0 63px, rgba(125, 200, 220, 0.028) 64px);
 }
 
 .scrim {
@@ -389,6 +390,10 @@ canvas {
   color: rgba(244, 241, 234, 0.42);
   font-size: 9px;
   line-height: 1.4;
+}
+
+.gesture-guide span:last-child {
+  color: rgba(183, 240, 238, 0.62);
 }
 
 .gesture-toggle {
